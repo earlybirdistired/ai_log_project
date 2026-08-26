@@ -9,6 +9,7 @@
 | 문서명 | 설명 | 바로가기 |
 | :--- | :--- | :--- |
 | **개발 계획서** | PRD 요구사항 기반 스프린트(Sprint 0 ~ 5) 로드맵 및 상세 작업 계획 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) |
+| **스프린트 진행 로그** | 스프린트별 상세 수행 내역, 완료 현황 및 기술적 의사결정 기록 | [SPRINT_LOG.md](./SPRINT_LOG.md) |
 | **테스트 케이스 명세서** | 정상, 의심, 위험, 판단불가 등 테스트 로그 데이터셋 및 검증 기준 | [TEST_CASES.md](./TEST_CASES.md) |
 | **제품 요구사항 정의서** | 상위 기획 명세서 (PRD) | [PRD.md](../PRD.md) |
 

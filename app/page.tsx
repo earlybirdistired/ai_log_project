@@ -6,7 +6,6 @@ import { IntroSection } from '@/components/intro-section'
 import { LogInputPanel } from '@/components/log-input-panel'
 import { AnalysisResultPanel } from '@/components/analysis-result-panel'
 import {
-  analyzeLog,
   clampToMaxLines,
   countLines,
   type AnalysisResult,
@@ -20,9 +19,7 @@ export default function Page() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [overflowNotice, setOverflowNotice] = useState(false)
   const [emptyNotice, setEmptyNotice] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 오류 테스트 버튼이 눌렸는지 여부를 추적 (다시 시도 시 정상 분석)
-  const forceErrorRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const lineCount = countLines(log)
 
@@ -42,26 +39,56 @@ export default function Page() {
     setEmptyNotice(false)
   }
 
-  // 분석 시뮬레이션: setTimeout으로 약 1.2초 지연 후 결과 표시
-  function runAnalysis(forceError: boolean) {
+  // 실제 API Route 호출을 통한 비동기 분석 수행 (F-02, E-03, E-04, E-05, E-08)
+  async function runAnalysis(forceError: boolean = false) {
     if (log.trim() === '') {
       setEmptyNotice(true)
       return
     }
     setEmptyNotice(false)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    forceErrorRef.current = forceError
+
+    // 기존 요청이 있다면 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     setStatus('analyzing')
 
-    timerRef.current = setTimeout(() => {
-      if (forceErrorRef.current) {
-        // 오류 상태에서는 이전 정상 결과를 덮어쓰지 않고 에러 상태 표시 (E-03)
-        setStatus('error')
-      } else {
-        setResult(analyzeLog(log))
-        setStatus('success')
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          log,
+          forceError,
+        }),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-    }, 1200)
+
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setResult(data.data)
+        setStatus('success')
+      } else {
+        throw new Error(data.error || 'Invalid response format')
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return // 중복 요청 취소 시 무시
+      }
+      console.error('분석 요청 실패:', error)
+      // E-03 / E-04: 오류 발생 시 기존 정상 결과를 덮어쓰지 않고 에러 상태 표시
+      setStatus('error')
+    }
   }
 
   function handleAnalyze() {
@@ -75,8 +102,9 @@ export default function Page() {
 
   function handleReset() {
     // 모든 상태 초기화 (F-07, E-09)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    forceErrorRef.current = false
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
     setLog('')
     setResult(null)
     setOverflowNotice(false)
@@ -134,7 +162,7 @@ export default function Page() {
               '로그인 없음',
               '분석 기록 저장 안 함',
               '자동 차단 안 함',
-              'Frontend Prototype',
+              'Full API Integration',
             ].map((item, i) => (
               <li key={item} className="flex items-center gap-3">
                 {i > 0 && (
