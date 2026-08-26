@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldAlert, AlertTriangle, ShieldX } from 'lucide-react'
+import { ShieldCheck, ShieldAlert, AlertTriangle, ShieldX, HelpCircle } from 'lucide-react'
 import type { RiskLevel } from '@/lib/analyze'
 
 const RISK_CONFIG: Record<
@@ -20,6 +20,10 @@ const RISK_CONFIG: Record<
   치명적: {
     className: 'border-risk-critical/50 bg-risk-critical/20 text-risk-critical',
     Icon: ShieldX,
+  },
+  '판단 불가': {
+    className: 'border-muted-foreground/40 bg-muted/30 text-muted-foreground',
+    Icon: HelpCircle,
   },
 }
 
