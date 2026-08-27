@@ -8,6 +8,10 @@ import { AnalysisResultPanel } from '@/components/analysis-result-panel'
 import {
   clampToMaxLines,
   countLines,
+  ERROR_MESSAGES,
+  isValidAnalysisResult,
+  type AnalysisErrorInfo,
+  type AnalysisErrorType,
   type AnalysisResult,
   type AnalysisStatus,
   type PresetLog,
@@ -17,6 +21,8 @@ export default function Page() {
   const [log, setLog] = useState('')
   const [status, setStatus] = useState<AnalysisStatus>('idle')
   const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [previousResult, setPreviousResult] = useState<AnalysisResult | null>(null)
+  const [errorInfo, setErrorInfo] = useState<AnalysisErrorInfo | null>(null)
   const [overflowNotice, setOverflowNotice] = useState(false)
   const [emptyNotice, setEmptyNotice] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -39,22 +45,47 @@ export default function Page() {
     setEmptyNotice(false)
   }
 
-  // 실제 API Route 호출을 통한 비동기 분석 수행 (F-02, E-03, E-04, E-05, E-08)
-  async function runAnalysis(forceError: boolean = false) {
+  // 실제 API Route 호출을 통한 비동기 분석 수행 (F-02, E-01 ~ E-09)
+  async function runAnalysis(forceType?: 'service' | 'malformed' | 'network') {
+    // E-01: 빈 로그 입력 시 분석 요청 차단
     if (log.trim() === '') {
       setEmptyNotice(true)
       return
     }
     setEmptyNotice(false)
 
-    // 기존 요청이 있다면 취소
+    // E-08: 중복 요청 방지 - 이미 분석 중인 경우 추가 요청 차단
+    if (status === 'analyzing' && !forceType) {
+      return
+    }
+
+    // E-04: 오프라인 상태 또는 네트워크 강제 에러 시뮬레이션
+    if (forceType === 'network' || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+      if (result) {
+        setPreviousResult(result)
+      }
+      setErrorInfo({
+        type: 'NETWORK_ERROR',
+        ...ERROR_MESSAGES.NETWORK_ERROR,
+      })
+      setStatus('error')
+      return
+    }
+
+    // 이전 요청 취소 및 새 AbortController 설정
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     const controller = new AbortController()
     abortControllerRef.current = controller
 
+    // 분석 진행 전 기존 성공 결과를 previousResult로 백업 (E-03 대응: 실패 시 보존)
+    if (result) {
+      setPreviousResult(result)
+    }
+
     setStatus('analyzing')
+    setErrorInfo(null)
 
     try {
       const response = await fetch('/api/analyze', {
@@ -64,49 +95,83 @@ export default function Page() {
         },
         body: JSON.stringify({
           log,
-          forceError,
+          forceErrorType: forceType,
         }),
         signal: controller.signal,
       })
 
+      // E-03: 서버 500 에러 및 API 실패 처리
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        let errorData: { error?: string; code?: string } = {}
+        try {
+          errorData = await response.json()
+        } catch {
+          // JSON 파싱 실패 무시
+        }
+
+        setErrorInfo({
+          type: 'AI_SERVICE_ERROR',
+          title: ERROR_MESSAGES.AI_SERVICE_ERROR.title,
+          message: errorData.error || ERROR_MESSAGES.AI_SERVICE_ERROR.message,
+        })
+        setStatus('error')
+        return
       }
 
       const data = await response.json()
 
-      if (data.success && data.data) {
+      // E-05: AI 응답 데이터 스키마 유효성 검증
+      if (data.success && isValidAnalysisResult(data.data)) {
         setResult(data.data)
+        setPreviousResult(null)
         setStatus('success')
       } else {
-        throw new Error(data.error || 'Invalid response format')
+        // 비정상적인 응답 형식
+        setErrorInfo({
+          type: 'INVALID_RESPONSE',
+          ...ERROR_MESSAGES.INVALID_RESPONSE,
+        })
+        setStatus('error')
       }
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         return // 중복 요청 취소 시 무시
       }
+
       console.error('분석 요청 실패:', error)
-      // E-03 / E-04: 오류 발생 시 기존 정상 결과를 덮어쓰지 않고 에러 상태 표시
+
+      // E-04 / E-03: 네트워크 오류 또는 서비스 예외
+      const isNetworkError =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        (error instanceof TypeError && error.message.includes('fetch'))
+
+      const errType: AnalysisErrorType = isNetworkError ? 'NETWORK_ERROR' : 'AI_SERVICE_ERROR'
+      setErrorInfo({
+        type: errType,
+        ...ERROR_MESSAGES[errType],
+      })
       setStatus('error')
     }
   }
 
   function handleAnalyze() {
-    runAnalysis(false)
+    runAnalysis()
   }
 
   function handleRetry() {
-    // 입력 로그를 유지한 채 정상 분석 재수행 (E-03)
-    runAnalysis(false)
+    // E-03: 입력 로그를 유지한 채 재시도
+    runAnalysis()
   }
 
   function handleReset() {
-    // 모든 상태 초기화 (F-07, E-09)
+    // E-09: 모든 상태 초기화
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     setLog('')
     setResult(null)
+    setPreviousResult(null)
+    setErrorInfo(null)
     setOverflowNotice(false)
     setEmptyNotice(false)
     setStatus('idle')
@@ -135,20 +200,43 @@ export default function Page() {
           <AnalysisResultPanel
             status={status}
             result={result}
+            errorInfo={errorInfo}
+            previousResult={previousResult}
             onRetry={handleRetry}
           />
         </main>
 
-        {/* 오류 상태 테스트 버튼 (E-03 / E-04 예외 케이스 검증용) */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => runAnalysis(true)}
-            disabled={log.trim() === '' || status === 'analyzing'}
-            className="min-h-9 text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            [테스트용] 인위적 분석 오류 발생 유발
-          </button>
+        {/* 예외 처리(E-03, E-04, E-05) 검증용 테스트 액션 바 */}
+        <div className="rounded-lg border border-border/70 bg-card/50 p-4 text-center">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            🧪 Sprint 3 예외 처리 시뮬레이션 테스트 바
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => runAnalysis('service')}
+              disabled={log.trim() === '' || status === 'analyzing'}
+              className="inline-flex min-h-8 items-center rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              [E-03] AI 서비스 실패 유발
+            </button>
+            <button
+              type="button"
+              onClick={() => runAnalysis('network')}
+              disabled={log.trim() === '' || status === 'analyzing'}
+              className="inline-flex min-h-8 items-center rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              [E-04] 네트워크 오류 유발
+            </button>
+            <button
+              type="button"
+              onClick={() => runAnalysis('malformed')}
+              disabled={log.trim() === '' || status === 'analyzing'}
+              className="inline-flex min-h-8 items-center rounded-md border border-border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              [E-05] 비정상 응답 형식 유발
+            </button>
+          </div>
         </div>
 
         {/* 제품 원칙 푸터 */}

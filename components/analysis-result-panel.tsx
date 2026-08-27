@@ -17,7 +17,12 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { RiskBadge } from '@/components/risk-badge'
-import type { AnalysisResult, AnalysisStatus, AttackType } from '@/lib/analyze'
+import type {
+  AnalysisErrorInfo,
+  AnalysisResult,
+  AnalysisStatus,
+  AttackType,
+} from '@/lib/analyze'
 
 const SUPPORTED_TYPES = [
   'SQL Injection',
@@ -40,28 +45,45 @@ const ATTACK_ICON: Record<AttackType, LucideIcon> = {
 interface AnalysisResultPanelProps {
   status: AnalysisStatus
   result: AnalysisResult | null
+  errorInfo: AnalysisErrorInfo | null
+  previousResult: AnalysisResult | null
   onRetry: () => void
 }
 
 export function AnalysisResultPanel({
   status,
   result,
+  errorInfo,
+  previousResult,
   onRetry,
 }: AnalysisResultPanelProps) {
   return (
     <section
-      className="flex min-h-[520px] flex-col rounded-xl border border-border bg-card"
+      className="flex min-h-[520px] flex-col rounded-xl border border-border bg-card shadow-sm"
       aria-live="polite"
     >
-      <div className="flex items-center gap-2 border-b border-border p-5">
-        <FileSearch className="size-5 text-primary" aria-hidden="true" />
-        <h3 className="text-base font-semibold text-foreground">AI 분석 결과</h3>
+      <div className="flex items-center justify-between border-b border-border p-5">
+        <div className="flex items-center gap-2">
+          <FileSearch className="size-5 text-primary" aria-hidden="true" />
+          <h3 className="text-base font-semibold text-foreground">AI 분석 결과</h3>
+        </div>
+        {status === 'error' && previousResult && (
+          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">
+            이전 정상 결과 보존됨
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-5">
         {status === 'idle' && <IdleState />}
         {status === 'analyzing' && <AnalyzingState />}
-        {status === 'error' && <ErrorState onRetry={onRetry} />}
+        {status === 'error' && (
+          <ErrorState
+            errorInfo={errorInfo}
+            previousResult={previousResult}
+            onRetry={onRetry}
+          />
+        )}
         {status === 'success' && result && <SuccessState result={result} />}
       </div>
     </section>
@@ -130,29 +152,64 @@ function AnalyzingState() {
   )
 }
 
-function ErrorState({ onRetry }: { onRetry: () => void }) {
+function ErrorState({
+  errorInfo,
+  previousResult,
+  onRetry,
+}: {
+  errorInfo: AnalysisErrorInfo | null
+  previousResult: AnalysisResult | null
+  onRetry: () => void
+}) {
+  const isNetwork = errorInfo?.type === 'NETWORK_ERROR'
+  const title = errorInfo?.title || '분석에 실패했습니다'
+  const message =
+    errorInfo?.message || '분석에 실패했습니다. 잠시 후 다시 시도해주세요.'
+
   return (
-    <div
-      role="alert"
-      className="flex flex-1 flex-col items-center justify-center gap-4 py-8 text-center"
-    >
-      <div className="flex size-16 items-center justify-center rounded-full border border-destructive/40 bg-destructive/15 text-destructive">
-        <AlertTriangle className="size-8" aria-hidden="true" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <h4 className="text-lg font-semibold text-foreground">
-          분석에 실패했습니다
-        </h4>
-        <p className="text-sm text-muted-foreground">잠시 후 다시 시도해주세요.</p>
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    <div className="flex flex-1 flex-col gap-6 py-4">
+      <div
+        role="alert"
+        className="flex flex-col items-center justify-center gap-4 text-center"
       >
-        <RefreshCw className="size-4" aria-hidden="true" />
-        다시 시도
-      </button>
+        <div className="flex size-16 items-center justify-center rounded-full border border-destructive/40 bg-destructive/15 text-destructive">
+          <AlertTriangle className="size-8" aria-hidden="true" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <h4 className="text-lg font-semibold text-foreground">{title}</h4>
+          <p className="max-w-md text-sm text-muted-foreground">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <RefreshCw className="size-4" aria-hidden="true" />
+          다시 시도
+        </button>
+      </div>
+
+      {/* E-03: 실패 시 이전 정상 결과가 덮어써지지 않고 보존된 내역 표시 */}
+      {previousResult && (
+        <div className="mt-2 rounded-lg border border-border/80 bg-background/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">
+              📋 이전 정상 분석 결과 (보존됨)
+            </span>
+            <RiskBadge risk={previousResult.risk} />
+          </div>
+          <div className="space-y-1.5 text-xs text-foreground/80">
+            <p>
+              <strong className="text-foreground">공격 유형:</strong>{' '}
+              {previousResult.attackType}
+            </p>
+            <p className="line-clamp-2">
+              <strong className="text-foreground">분석 설명:</strong>{' '}
+              {previousResult.description}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -160,9 +217,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
 function SuccessState({ result }: { result: AnalysisResult }) {
   const AttackIcon = ATTACK_ICON[result.attackType]
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 animate-in fade-in-50 duration-300">
       {/* 요약 헤더 */}
-      <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/10 p-4">
+      <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/10 p-4 transition-all">
         <CheckCircle2
           className="mt-0.5 size-6 shrink-0 text-primary"
           aria-hidden="true"

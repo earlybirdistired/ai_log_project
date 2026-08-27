@@ -9,10 +9,24 @@ import {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { log, forceError } = body
+    const { log, forceError, forceErrorType } = body
 
-    // 1. 강제 오류 테스트 플래그 처리 (E-03 / E-04 검증용)
-    if (forceError) {
+    // 1. 강제 오류 테스트 플래그 처리 (E-03, E-05 검증용)
+    if (forceErrorType === 'malformed') {
+      // E-05: 비정상 데이터 구조 반환 시뮬레이션
+      return NextResponse.json({
+        success: true,
+        data: {
+          corrupted: true,
+          attackType: 'UnknownAttack', // 허용되지 않은 공격 유형
+          risk: 'VeryDangerous', // 허용되지 않은 위험도
+          description: '', // 빈 설명
+        },
+      })
+    }
+
+    if (forceError || forceErrorType === 'service') {
+      // E-03: AI 서비스 호출 실패 시뮬레이션
       return NextResponse.json(
         {
           success: false,

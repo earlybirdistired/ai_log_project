@@ -1,4 +1,3 @@
-// 공격 유형과 위험도, 분석 상태에 대한 타입 정의
 export type AttackType =
   | 'SQL Injection'
   | 'XSS'
@@ -19,6 +18,92 @@ export interface AnalysisResult {
   recommendations: string[]
   lineCount: number
   processingTime: string
+}
+
+export type AnalysisErrorType =
+  | 'EMPTY_LOG'
+  | 'OVERFLOW_LOG'
+  | 'AI_SERVICE_ERROR'
+  | 'NETWORK_ERROR'
+  | 'INVALID_RESPONSE'
+
+export interface AnalysisErrorInfo {
+  type: AnalysisErrorType
+  title: string
+  message: string
+}
+
+export const ERROR_MESSAGES: Record<AnalysisErrorType, { title: string; message: string }> = {
+  EMPTY_LOG: {
+    title: '입력 오류',
+    message: '분석할 로그를 입력해주세요.',
+  },
+  OVERFLOW_LOG: {
+    title: '입력 한도 초과',
+    message: '로그는 최대 100줄까지 입력할 수 있습니다.',
+  },
+  AI_SERVICE_ERROR: {
+    title: '분석 서비스 오류',
+    message: '분석에 실패했습니다. 잠시 후 다시 시도해주세요.',
+  },
+  NETWORK_ERROR: {
+    title: '네트워크 연결 오류',
+    message: '네트워크 연결에 문제가 발생했습니다. 연결 상태를 확인한 후 다시 시도해주세요.',
+  },
+  INVALID_RESPONSE: {
+    title: '데이터 처리 오류',
+    message: '분석 결과를 처리할 수 없습니다. 다시 시도해주세요.',
+  },
+}
+
+export const VALID_ATTACK_TYPES: AttackType[] = [
+  'SQL Injection',
+  'XSS',
+  'Brute Force',
+  'Path Traversal',
+  '정상 요청',
+  '판단 불가',
+]
+
+export const VALID_RISK_LEVELS: RiskLevel[] = [
+  '낮음',
+  '중간',
+  '높음',
+  '치명적',
+  '판단 불가',
+]
+
+// E-05 대응: AI 응답 데이터 스키마 유효성 검증
+export function isValidAnalysisResult(data: unknown): data is AnalysisResult {
+  if (!data || typeof data !== 'object') return false
+  const res = data as Record<string, unknown>
+
+  const isValidAttack =
+    typeof res.attackType === 'string' &&
+    VALID_ATTACK_TYPES.includes(res.attackType as AttackType)
+
+  const isValidRisk =
+    typeof res.risk === 'string' &&
+    VALID_RISK_LEVELS.includes(res.risk as RiskLevel)
+
+  const isValidDescription =
+    typeof res.description === 'string' && res.description.trim().length > 0
+
+  const isValidEvidence =
+    Array.isArray(res.evidence) &&
+    res.evidence.every((item) => typeof item === 'string')
+
+  const isValidRecommendations =
+    Array.isArray(res.recommendations) &&
+    res.recommendations.every((item) => typeof item === 'string')
+
+  return (
+    isValidAttack &&
+    isValidRisk &&
+    isValidDescription &&
+    isValidEvidence &&
+    isValidRecommendations
+  )
 }
 
 export const MAX_LINES = 100
