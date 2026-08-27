@@ -31,7 +31,7 @@ export function RiskBadge({ risk }: { risk: RiskLevel }) {
   const { className, Icon } = RISK_CONFIG[risk]
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm font-semibold ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-md border-2 px-3 py-1 text-sm font-semibold ${className}`}
     >
       <Icon className="size-4" aria-hidden="true" />
       <span>위험도 {risk}</span>

@@ -22,7 +22,7 @@ export function IntroSection() {
         {BADGES.map(({ icon: Icon, label }) => (
           <li
             key={label}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground"
+            className="inline-flex items-center gap-1.5 rounded-none border-2 border-border bg-card px-3 py-1.5 text-sm text-muted-foreground"
           >
             <Icon className="size-4 text-primary" aria-hidden="true" />
             {label}

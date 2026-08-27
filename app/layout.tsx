@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#f5f7fb',
+  themeColor: '#fcf9f2',
 }
 
 export default function RootLayout({
@@ -31,7 +31,8 @@ export default function RootLayout({
       lang="ko"
       className={`light bg-background ${inter.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="font-sans antialiased">
+      {/* SEC-OPS Terminal 테마: 전체를 JetBrains Mono로 통일 (docs/디자인.md) */}
+      <body className="font-mono antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

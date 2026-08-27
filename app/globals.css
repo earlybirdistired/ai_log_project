@@ -53,37 +53,38 @@
 
 :root {
   color-scheme: light;
-  /* 밝은 블루-그레이 배경 */
-  --background: oklch(0.98 0.008 240);
-  --foreground: oklch(0.28 0.03 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.03 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.03 255);
-  /* 사이버 블루 강조 */
-  --primary: oklch(0.55 0.15 245);
-  --primary-foreground: oklch(0.99 0.005 240);
-  --secondary: oklch(0.95 0.012 240);
-  --secondary-foreground: oklch(0.32 0.03 255);
-  --muted: oklch(0.96 0.01 240);
-  --muted-foreground: oklch(0.52 0.02 250);
-  --accent: oklch(0.93 0.03 235);
-  --accent-foreground: oklch(0.32 0.05 250);
-  --destructive: oklch(0.58 0.21 25);
-  --border: oklch(0.9 0.012 245);
-  --input: oklch(0.92 0.012 245);
-  --ring: oklch(0.55 0.15 245);
-  /* 위험도 색상 (라이트) */
-  --risk-low: oklch(0.6 0.15 155);
-  --risk-medium: oklch(0.68 0.15 75);
-  --risk-high: oklch(0.62 0.19 45);
-  --risk-critical: oklch(0.55 0.22 25);
-  --chart-1: oklch(0.55 0.15 245);
-  --chart-2: oklch(0.6 0.15 155);
-  --chart-3: oklch(0.68 0.15 75);
-  --chart-4: oklch(0.62 0.19 45);
-  --chart-5: oklch(0.55 0.22 25);
-  --radius: 0.625rem;
+  /* SEC-OPS Terminal — Archive Aesthetic (docs/디자인.md) */
+  --background: #fcf9f2;
+  --foreground: #162839;
+  --card: #ffffff;
+  --card-foreground: #162839;
+  --popover: #f6f3ec;
+  --popover-foreground: #162839;
+  /* primary = 짙은 잉크 톤 (outline과 동일 색상) */
+  --primary: #162839;
+  --primary-foreground: #ffffff;
+  --secondary: #d7e3f7;
+  --secondary-foreground: #101c2b;
+  --muted: #f0ede6;
+  --muted-foreground: #44474e;
+  --accent: #eae7e0;
+  --accent-foreground: #162839;
+  --destructive: #ba1a1a;
+  --border: #c4c6cf;
+  --input: #c4c6cf;
+  --ring: #162839;
+  /* 기능적 보안 색상 (Functional Security Colors) */
+  --risk-low: #2e7d32;
+  --risk-medium: #ed6c02;
+  --risk-high: #d32f2f;
+  --risk-critical: #9a0007;
+  --chart-1: #162839;
+  --chart-2: #2e7d32;
+  --chart-3: #ed6c02;
+  --chart-4: #d32f2f;
+  --chart-5: #9a0007;
+  /* Sharp corners for terminal aesthetic */
+  --radius: 0rem;
   --sidebar: oklch(0.99 0.005 240);
   --sidebar-foreground: oklch(0.28 0.03 255);
   --sidebar-primary: oklch(0.55 0.15 245);
@@ -96,45 +97,47 @@
 
 .dark {
   color-scheme: dark;
-  /* 매우 짙은 네이비 배경 */
-  --background: oklch(0.19 0.03 255);
-  --foreground: oklch(0.95 0.01 240);
-  /* 배경보다 약간 밝은 네이비 카드 */
-  --card: oklch(0.24 0.035 255);
-  --card-foreground: oklch(0.95 0.01 240);
-  --popover: oklch(0.24 0.035 255);
-  --popover-foreground: oklch(0.95 0.01 240);
-  /* 청록/사이버 블루 강조 */
-  --primary: oklch(0.78 0.13 195);
-  --primary-foreground: oklch(0.2 0.04 255);
-  --secondary: oklch(0.3 0.035 255);
-  --secondary-foreground: oklch(0.95 0.01 240);
-  --muted: oklch(0.28 0.03 255);
-  --muted-foreground: oklch(0.68 0.02 245);
-  --accent: oklch(0.3 0.04 200);
-  --accent-foreground: oklch(0.95 0.01 240);
-  --destructive: oklch(0.58 0.21 25);
-  --border: oklch(0.34 0.03 255);
-  --input: oklch(0.28 0.03 255);
-  --ring: oklch(0.78 0.13 195);
-  /* 위험도 색상 */
-  --risk-low: oklch(0.72 0.16 155);
-  --risk-medium: oklch(0.79 0.15 85);
-  --risk-high: oklch(0.7 0.18 45);
-  --risk-critical: oklch(0.6 0.22 25);
-  --chart-1: oklch(0.78 0.13 195);
-  --chart-2: oklch(0.72 0.16 155);
-  --chart-3: oklch(0.79 0.15 85);
-  --chart-4: oklch(0.7 0.18 45);
-  --chart-5: oklch(0.6 0.22 25);
-  --sidebar: oklch(0.24 0.035 255);
-  --sidebar-foreground: oklch(0.95 0.01 240);
-  --sidebar-primary: oklch(0.78 0.13 195);
-  --sidebar-primary-foreground: oklch(0.2 0.04 255);
-  --sidebar-accent: oklch(0.3 0.04 200);
-  --sidebar-accent-foreground: oklch(0.95 0.01 240);
-  --sidebar-border: oklch(0.34 0.03 255);
-  --sidebar-ring: oklch(0.78 0.13 195);
+  /* SEC-OPS Terminal 다크 변형 — 디자인.md에는 단일(라이트) 팔레트만 정의되어
+     있어, surface/on-surface 관계를 반전시켜 구성했다. 앱은 현재 다크모드
+     토글이 없어(html에 "light" 클래스 고정) 이 블록은 실제로 적용되지 않지만,
+     추후 토글을 추가할 경우를 대비해 동일한 원칙으로 동기화해 둔다. */
+  --background: #0d1620;
+  --foreground: #fcf9f2;
+  --card: #162839;
+  --card-foreground: #fcf9f2;
+  --popover: #1c3044;
+  --popover-foreground: #fcf9f2;
+  /* 다크에서는 primary를 밝은 종이 톤으로 반전해 어두운 배경에 대비되도록 함 */
+  --primary: #fcf9f2;
+  --primary-foreground: #162839;
+  --secondary: #223449;
+  --secondary-foreground: #d7e3f7;
+  --muted: #1a2a38;
+  --muted-foreground: #a7abb3;
+  --accent: #22303e;
+  --accent-foreground: #fcf9f2;
+  --destructive: #ff5449;
+  --border: #44474e;
+  --input: #44474e;
+  --ring: #fcf9f2;
+  /* 기능적 보안 색상 (다크 배경 가독성을 위해 밝기 상향) */
+  --risk-low: #66bb6a;
+  --risk-medium: #ffa726;
+  --risk-high: #ef5350;
+  --risk-critical: #ff1744;
+  --chart-1: #fcf9f2;
+  --chart-2: #66bb6a;
+  --chart-3: #ffa726;
+  --chart-4: #ef5350;
+  --chart-5: #ff1744;
+  --sidebar: #162839;
+  --sidebar-foreground: #fcf9f2;
+  --sidebar-primary: #fcf9f2;
+  --sidebar-primary-foreground: #162839;
+  --sidebar-accent: #22303e;
+  --sidebar-accent-foreground: #fcf9f2;
+  --sidebar-border: #44474e;
+  --sidebar-ring: #fcf9f2;
 }
 
 @media (prefers-color-scheme: dark) {

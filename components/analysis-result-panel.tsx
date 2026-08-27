@@ -60,16 +60,16 @@ export function AnalysisResultPanel({
 }: AnalysisResultPanelProps) {
   return (
     <section
-      className="flex min-h-[520px] flex-col rounded-xl border border-border bg-card shadow-sm"
+      className="flex min-h-[520px] flex-col border-2 border-primary bg-card"
       aria-live="polite"
     >
-      <div className="flex items-center justify-between border-b border-border p-5">
+      <div className="flex items-center justify-between border-b-2 border-border p-5">
         <div className="flex items-center gap-2">
           <FileSearch className="size-5 text-primary" aria-hidden="true" />
           <h3 className="text-base font-semibold text-foreground">AI 분석 결과</h3>
         </div>
         {status === 'error' && previousResult && (
-          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">
+          <span className="rounded-none bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground">
             이전 정상 결과 보존됨
           </span>
         )}
@@ -94,7 +94,7 @@ export function AnalysisResultPanel({
 function IdleState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 py-8 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full border border-border bg-secondary text-primary">
+      <div className="flex size-16 items-center justify-center rounded-none border-2 border-border bg-secondary text-primary">
         <ShieldQuestion className="size-8" aria-hidden="true" />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -113,7 +113,7 @@ function IdleState() {
           {SUPPORTED_TYPES.map((type) => (
             <li
               key={type}
-              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground"
+              className="rounded-md border-2 border-border bg-background px-2.5 py-1 text-xs text-muted-foreground"
             >
               {type}
             </li>
@@ -173,7 +173,7 @@ function ErrorState({
         role="alert"
         className="flex flex-col items-center justify-center gap-4 text-center"
       >
-        <div className="flex size-16 items-center justify-center rounded-full border border-destructive/40 bg-destructive/15 text-destructive">
+        <div className="flex size-16 items-center justify-center rounded-none border-2 border-destructive/40 bg-destructive/15 text-destructive">
           <AlertTriangle className="size-8" aria-hidden="true" />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -192,7 +192,7 @@ function ErrorState({
 
       {/* E-03: 실패 시 이전 정상 결과가 덮어써지지 않고 보존된 내역 표시 */}
       {previousResult && (
-        <div className="mt-2 rounded-lg border border-border/80 bg-background/60 p-4">
+        <div className="mt-2 rounded-lg border-2 border-border/80 bg-background/60 p-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground">
               📋 이전 정상 분석 결과 (보존됨)
@@ -254,7 +254,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
   return (
     <div className="flex flex-col gap-5 animate-in fade-in-50 duration-300">
       {/* 요약 헤더 */}
-      <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/10 p-4 transition-all">
+      <div className="flex items-start gap-3 rounded-lg border-2 border-primary/25 bg-primary/10 p-4 transition-all">
         <CheckCircle2
           className="mt-0.5 size-6 shrink-0 text-primary"
           aria-hidden="true"
@@ -266,7 +266,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
             {result.logFormat && (
               <>
                 {' · '}
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                <span className="rounded-none bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                   {result.logFormat}
                 </span>
               </>
@@ -277,7 +277,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
 
       {/* 공격 유형 + 위험도 */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+        <div className="flex flex-col gap-2 rounded-lg border-2 border-border bg-background p-4">
           <p className="text-xs font-medium text-muted-foreground">공격 유형</p>
           <p className="flex items-center gap-2 text-lg font-semibold text-foreground">
             <AttackIcon className="size-5 text-primary" aria-hidden="true" />
@@ -289,7 +289,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
               {result.secondaryAttackTypes.map((type) => (
                 <span
                   key={type}
-                  className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+                  className="rounded-none border-2 border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
                 >
                   {type}
                 </span>
@@ -297,13 +297,13 @@ function SuccessState({ result }: { result: AnalysisResult }) {
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+        <div className="flex flex-col gap-2 rounded-lg border-2 border-border bg-background p-4">
           <p className="text-xs font-medium text-muted-foreground">위험도</p>
           <div className="flex flex-wrap items-center gap-2">
             <RiskBadge risk={result.risk} />
             {result.confidence && (
               <span
-                className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+                className="rounded-none border-2 border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
                 title="AI가 스스로 판단한 분석 확신도"
               >
                 확신도 {result.confidence}
@@ -314,13 +314,13 @@ function SuccessState({ result }: { result: AnalysisResult }) {
       </div>
 
       {/* 분석 설명 (타이핑 효과) */}
-      <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+      <div className="flex flex-col gap-2 rounded-lg border-2 border-border bg-background p-4">
         <p className="text-sm font-semibold text-foreground">분석 설명</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {typedDescription}
           {typedDescription.length < result.description.length && (
             <span
-              className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-primary align-middle"
+              className="ml-0.5 inline-block h-3.5 w-[2px] animate-[pulse_1s_infinite] bg-primary align-middle"
               aria-hidden="true"
             />
           )}
@@ -328,7 +328,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
       </div>
 
       {/* 탐지 근거 */}
-      <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-background p-4">
+      <div className="flex flex-col gap-2.5 rounded-lg border-2 border-border bg-background p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <ListChecks className="size-4 text-primary" aria-hidden="true" />
           탐지 근거
@@ -340,7 +340,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
               className="flex gap-2 text-sm leading-relaxed text-muted-foreground"
             >
               <span
-                className="mt-2 size-1.5 shrink-0 rounded-full bg-primary"
+                className="mt-2 size-1.5 shrink-0 rounded-none bg-primary"
                 aria-hidden="true"
               />
               {item}
@@ -350,7 +350,7 @@ function SuccessState({ result }: { result: AnalysisResult }) {
       </div>
 
       {/* 권장 확인 사항 */}
-      <div className="flex flex-col gap-2.5 rounded-lg border border-risk-medium/40 bg-risk-medium/10 p-4">
+      <div className="flex flex-col gap-2.5 rounded-lg border-2 border-risk-medium/40 bg-risk-medium/10 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold text-risk-medium">
           <AlertTriangle className="size-4" aria-hidden="true" />
           권장 확인 사항
