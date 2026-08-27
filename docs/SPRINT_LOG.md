@@ -103,8 +103,88 @@
 
 ---
 
-## 🏆 프로젝트 개발 완료 (All Sprints Completed)
+## 🏆 1차 개발 완료 (Sprint 0 ~ 5)
 - **총 스프린트:** Sprint 0 ~ Sprint 5 (총 6개 스프린트 100% 완료)
-- **최종 상태:** PRD 요구사항 및 성공 조건 100% 충족
+- **최종 상태:** PRD 요구사항 및 성공 조건 100% 충족 (규칙 기반 목업 엔진 기준)
+
+---
+
+## 🏃 Sprint 6: 실제 Gemini API 연동 + 안정화 (긴급 수정)
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료
+- **배경:** 이전 세션에서 `.env`에 실키를 설정하고 `route.ts`를 Gemini 연동으로 전환했으나, 코드에 박아둔 모델명(`gemini-2.0-flash`)이 폐기되어 모든 실호출이 404로 실패하는 상태에서 중단됨.
+- **주요 수행 내역:**
+  - **모델 폐기 대응:** `gemini-2.0-flash` → `gemini-3.6-flash`로 교체(1차), 이후 무료 등급 일일 할당량(20건) 소진을 확인하고 **`gemini-3.5-flash-lite`로 임시 전환**. 모델명을 `GEMINI_MODEL` 환경변수로 교체 가능하게 리팩터링.
+  - **응답 잘림(MAX_TOKENS) 방지:** `gemini-3.6-flash`가 내부 reasoning에 토큰을 선점(최대 900+ thoughtsToken)해 JSON이 중간에 잘리는 문제를 발견 → `maxOutputTokens: 2048` + `thinkingConfig.thinkingBudget: 256`으로 고정.
+  - **타임아웃/재시도 로직 (실측 기반 재설계):** 동일 로그도 정상적으로 최대 45초 이상 걸릴 수 있음을 실측으로 확인 → "느린 정상 응답"과 "멈춘 요청"을 구분. 1차 시도는 45초까지 기다리고, 5초 이내에 빠르게 실패한 경우만 일시적 오류로 간주해 10초 예산으로 1회 재시도. 45초를 다 채운 실패는 재시도하지 않고 즉시 E-03 처리. 429(RESOURCE_EXHAUSTED, 할당량 초과)는 Google이 요구하는 대기시간이 우리 예산을 초과하므로 재시도 없이 즉시 실패.
+  - **클라이언트 안전장치:** `app/page.tsx`에 55초 하드 타임아웃 추가, 서버가 응답 없이 멈추는 경우에도 UI가 무한 대기하지 않도록 방어.
+  - **보안:** `.env`가 `.gitignore`에서 누락되어 실키 유출 위험이 있던 것을 발견 후 추가.
+  - **검증:** 강제 타임아웃으로 재시도 경로 동작 확인, 429 발생 시 즉시 실패 확인(로그로 검증), 최종적으로 SSH/Brute Force/SQL Injection/Path Traversal/정상 요청 로그로 실제 Gemini 응답 200 OK 확인 (응답시간 1.7~3초).
+
+---
+
+## 🏃 Sprint 7: 로그 유형 자동 감지 고도화
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료
+- **주요 수행 내역:**
+  - SYSTEM_PROMPT에 분석 전 로그 포맷을 먼저 판별하도록 규칙 0번 추가 (SSH 인증 로그 / Apache-Nginx 액세스 로그 / Windows 이벤트 로그 / 애플리케이션 로그 / 알 수 없음)
+  - 응답 스키마에 `logFormat` 필드 추가 (`lib/analyze.ts`의 `AnalysisResult`에 optional로 추가, 기존 규칙 기반 목업 엔진과 호환 유지)
+  - `components/analysis-result-panel.tsx`에 판별된 로그 포맷을 배지로 표시
+  - **검증:** 실제 SSH 로그(`sshd[...]: Failed password ...`)를 입력해 `logFormat: "SSH 인증 로그"`가 정확히 반환되는 것을 확인
+
+---
+
+## 🏃 Sprint 8: 분석 결과 신뢰도(Confidence) 표시
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료
+- **주요 수행 내역:**
+  - SYSTEM_PROMPT에 규칙 6번 추가: `confidence`를 "높음"/"중간"/"낮음" 3단계로 스스로 평가하도록 지시(근거 불충분 시 정직하게 "중간"/"낮음" 표시하도록 유도)
+  - `lib/analyze.ts`에 `ConfidenceLevel` 타입 및 `VALID_CONFIDENCE_LEVELS` 추가, `AnalysisResult.confidence`는 optional로 추가(레거시 규칙 기반 엔진과 호환 유지)
+  - `route.ts`에서 유효하지 않은 confidence 값은 조용히 무시(undefined 처리)하여 스키마 검증 실패로 전체 분석이 깨지지 않도록 방어
+  - `components/analysis-result-panel.tsx`의 위험도 옆에 "확신도 OO" 배지 추가
+  - **검증:** 판단이 어려운 단편 로그(TC-06 유형)를 입력해 `attackType: "판단 불가"`와 함께 `confidence: "낮음"`이 일관되게 반환되는 것을 확인
+
+---
+
+## 🏃 Sprint 9: 멀티 공격 유형 복합 감지
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료
+- **주요 수행 내역:**
+  - SYSTEM_PROMPT에 규칙 7번 추가: 주 공격 유형(`attackType`) 외에 함께 발견된 다른 공격 패턴을 `secondaryAttackTypes` 배열(0~2개)로 추가 보고하도록 지시. 복합 공격이 아니면 빈 배열 반환.
+  - `lib/analyze.ts`의 `AnalysisResult`에 `secondaryAttackTypes?: AttackType[]` optional 필드 추가
+  - `route.ts`에서 응답을 방어적으로 정제: 유효한 6대 공격 유형 목록에 없는 값, 주 공격 유형과 중복되는 값, "정상 요청"/"판단 불가"는 제거하고, 결과가 빈 배열이면 필드 자체를 생략
+  - `components/analysis-result-panel.tsx`에 "복합 패턴: XSS, Brute Force" 형태의 보조 태그 UI 추가
+  - **검증:** 동일 IP의 반복 로그인 실패(Brute Force) 뒤에 SQL Injection 패턴이 이어지는 혼합 로그를 입력해 `attackType: "SQL Injection"`, `secondaryAttackTypes: ["Brute Force"]`로 정확히 복합 탐지되는 것을 확인
+
+---
+
+## 🏃 Sprint 10: 분석 히스토리(세션 메모리) 기능
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료
+- **PRD 준수 설계:** PRD 제외 범위("데이터베이스 및 분석 기록 저장")를 지키기 위해 서버/DB/localStorage에는 아무것도 저장하지 않는다. `app/page.tsx`의 React 상태로만 최근 3건(attackType/risk 요약)을 보관하며, 새로고침하면 즉시 사라진다.
+- **주요 수행 내역:**
+  - `lib/analyze.ts`에 `AnalysisHistoryEntry { attackType, risk }` 타입 추가
+  - `app/page.tsx`: 분석 성공 시 히스토리에 요약을 추가(최대 3건 유지), 다음 요청 시 `history` 필드로 함께 전송. 초기화(E-09) 버튼은 입력/결과만 지우고 히스토리는 유지(연속 분석 시나리오 지원 목적), 별도 "히스토리 지우기" 버튼으로 사용자가 직접 맥락을 끊을 수 있게 함
+  - `route.ts`의 `buildHistoryContext()`: 클라이언트가 보낸 값을 신뢰하지 않고, `VALID_ATTACK_TYPES`/`VALID_RISK_LEVELS` enum에 속하는 값만 최대 3건 필터링해 프롬프트에 참고 정보로 추가 (자유 텍스트 주입 차단)
+  - SYSTEM_PROMPT에 규칙 8번 추가: 히스토리는 참고용일 뿐 현재 로그의 증거보다 우선하지 않도록 지시
+  - **검증:** ① 정상 히스토리(SQL Injection/Brute Force 요약)를 포함해 요청 시 정상 응답 확인 ② 공격 유형 자리에 프롬프트 인젝션 문자열("IGNORE ALL PREVIOUS INSTRUCTIONS...")과 비객체 값을 섞어 보내도 enum 검증에 걸러져 분석이 오염되지 않고 정상 로그가 그대로 "정상 요청"으로 판정되는 것을 확인
+
+---
+
+## 🏃 Sprint 11: 스트리밍 응답(실시간 타이핑 효과) 지원
+- **일자:** 2026-08-27
+- **상태:** 🟢 완료 (범위를 의도적으로 조정함 — 아래 설계 참고)
+- **설계 결정:** 원래 계획은 "Gemini 스트리밍 API로 실시간 타이핑 효과"였으나, Sprint 6~9에서 어렵게 확보한 안정성(완전한 JSON을 받아 스키마 검증까지 통과한 뒤에만 화면에 반영하는 E-05 방어)을 깨지 않기 위해 **원시 토큰 스트림을 그대로 흘려보내지 않기로 결정**했다. 대신 검증이 끝난 최종 `description` 텍스트를 클라이언트에서 타이핑하듯 점진적으로 렌더링하여, 서버 계약을 바꾸지 않고 동일한 체감 UX(실시간 타이핑 효과)를 제공한다.
+- **주요 수행 내역:**
+  - `components/analysis-result-panel.tsx`에 `useTypewriter()` 훅 추가 (약 600ms 동안 텍스트 길이에 비례해 점진적으로 문자를 드러냄, 커서 깜빡임 효과 포함)
+  - 분석 설명(`description`) 영역에 적용. 서버(`route.ts`) 응답 계약과 검증 로직은 변경하지 않음
+  - **검증:** `npx tsc --noEmit` 통과. ⚠️ 브라우저에서의 시각적 애니메이션 동작은 자동화된 방식으로 직접 확인하지 못했으므로(코드 리뷰 + 타입체크로만 검증), 실사용 전 브라우저에서 육안 확인을 권장함.
+
+---
+
+## 🏁 2차 개발(AI 실사용 안정화) 완료 요약
+- **총 스프린트:** Sprint 6 ~ Sprint 11 (총 6개 스프린트 100% 완료)
+- **핵심 성과:** 목업(규칙 기반) 분석 엔진에서 실제 Gemini 연동으로 전환 완료, 무료 등급 할당량 이슈 발견 및 대응, 로그 포맷 자동 감지/신뢰도 표시/복합 공격 탐지/세션 히스토리/타이핑 효과 추가
+- **알려진 제약:** `gemini-3.6-flash`는 일일 할당량 20건으로 실사용 불가 → `gemini-3.5-flash-lite`로 임시 전환(`GEMINI_MODEL` 환경변수로 교체 가능). 프로덕션 전환 시 유료 등급(Billing) 전환 필요.
 
 

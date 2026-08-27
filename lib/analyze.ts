@@ -8,11 +8,22 @@ export type AttackType =
 
 export type RiskLevel = '낮음' | '중간' | '높음' | '치명적' | '판단 불가'
 
+// Sprint 8: AI 스스로가 판단한 분석 결과에 대한 확신 정도
+export type ConfidenceLevel = '높음' | '중간' | '낮음'
+
+export const VALID_CONFIDENCE_LEVELS: ConfidenceLevel[] = ['높음', '중간', '낮음']
+
 export type AnalysisStatus = 'idle' | 'analyzing' | 'success' | 'error'
 
 export interface AnalysisResult {
+  // Sprint 7: AI가 분석 전 판별한 로그 원본 형식 (SSH/Apache-Nginx/Windows 등). 규칙 기반 목업 엔진은 채우지 않으므로 optional.
+  logFormat?: string
   attackType: AttackType
+  // Sprint 9: 주 공격 유형(attackType) 외 함께 발견된 추가 공격 유형(복합 공격). optional.
+  secondaryAttackTypes?: AttackType[]
   risk: RiskLevel
+  // Sprint 8: AI가 스스로 매긴 판단 확신도. 규칙 기반 목업 엔진은 채우지 않으므로 optional.
+  confidence?: ConfidenceLevel
   description: string
   evidence: string[]
   recommendations: string[]
@@ -119,6 +130,14 @@ export function clampToMaxLines(value: string, max: number = MAX_LINES): string 
   const lines = value.split('\n')
   if (lines.length <= max) return value
   return lines.slice(0, max).join('\n')
+}
+
+// Sprint 10: 같은 브라우저 세션 내에서만 유지되는 분석 히스토리 항목.
+// DB/localStorage에 저장하지 않고 React 상태로만 보관하므로 새로고침 시 사라진다
+// (PRD 제외 범위 "분석 기록 저장" 위반 없이 컨텍스트 연속성만 제공하기 위함).
+export interface AnalysisHistoryEntry {
+  attackType: AttackType
+  risk: RiskLevel
 }
 
 export interface PresetLog {

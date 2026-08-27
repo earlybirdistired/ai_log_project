@@ -12,10 +12,14 @@ import {
   isValidAnalysisResult,
   type AnalysisErrorInfo,
   type AnalysisErrorType,
+  type AnalysisHistoryEntry,
   type AnalysisResult,
   type AnalysisStatus,
   type PresetLog,
 } from '@/lib/analyze'
+
+// Sprint 10: 세션 내 최근 분석 히스토리를 몇 건까지 컨텍스트로 넘길지
+const HISTORY_LIMIT = 3
 
 export default function Page() {
   const [log, setLog] = useState('')
@@ -25,6 +29,9 @@ export default function Page() {
   const [errorInfo, setErrorInfo] = useState<AnalysisErrorInfo | null>(null)
   const [overflowNotice, setOverflowNotice] = useState(false)
   const [emptyNotice, setEmptyNotice] = useState(false)
+  // Sprint 10: DB/localStorage에 저장하지 않는 순수 세션 메모리(React 상태).
+  // 새로고침하면 사라지며, PRD가 제외한 "분석 기록 저장"에 해당하지 않는다.
+  const [history, setHistory] = useState<AnalysisHistoryEntry[]>([])
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const lineCount = countLines(log)
@@ -79,6 +86,16 @@ export default function Page() {
     const controller = new AbortController()
     abortControllerRef.current = controller
 
+    // Sprint 6: 서버가 응답 없이 멈추는 경우를 대비한 클라이언트측 안전장치.
+    // 서버 1차 시도의 최대 타임아웃이 45초이므로, 네트워크 왕복 시간을 감안해
+    // 그보다 여유를 둔 55초를 넘기면 강제로 요청을 종료한다.
+    let timedOut = false
+    const CLIENT_TIMEOUT_MS = 55_000
+    const timeoutId = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, CLIENT_TIMEOUT_MS)
+
     // 분석 진행 전 기존 성공 결과를 previousResult로 백업 (E-03 대응: 실패 시 보존)
     if (result) {
       setPreviousResult(result)
@@ -96,6 +113,7 @@ export default function Page() {
         body: JSON.stringify({
           log,
           forceErrorType: forceType,
+          history: history.slice(-HISTORY_LIMIT),
         }),
         signal: controller.signal,
       })
@@ -125,6 +143,12 @@ export default function Page() {
         setResult(data.data)
         setPreviousResult(null)
         setStatus('success')
+        // Sprint 10: 세션 히스토리에 요약만 추가 (최근 HISTORY_LIMIT건 유지)
+        setHistory((prev) =>
+          [...prev, { attackType: data.data.attackType, risk: data.data.risk }].slice(
+            -HISTORY_LIMIT
+          )
+        )
       } else {
         // 비정상적인 응답 형식
         setErrorInfo({
@@ -135,7 +159,17 @@ export default function Page() {
       }
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
-        return // 중복 요청 취소 시 무시
+        if (!timedOut) {
+          return // 중복 요청으로 인한 취소는 무시
+        }
+        // Sprint 6: 클라이언트 타임아웃 초과 → 네트워크 오류로 안내
+        console.error(`분석 요청이 ${CLIENT_TIMEOUT_MS / 1000}초 내에 응답하지 않아 중단되었습니다.`)
+        setErrorInfo({
+          type: 'NETWORK_ERROR',
+          ...ERROR_MESSAGES.NETWORK_ERROR,
+        })
+        setStatus('error')
+        return
       }
 
       console.error('분석 요청 실패:', error)
@@ -151,6 +185,8 @@ export default function Page() {
         ...ERROR_MESSAGES[errType],
       })
       setStatus('error')
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 
@@ -175,6 +211,12 @@ export default function Page() {
     setOverflowNotice(false)
     setEmptyNotice(false)
     setStatus('idle')
+  }
+
+  // Sprint 10: 세션 히스토리만 별도로 비우기 (입력/결과 초기화와 무관하게
+  // 이후 분석에 이전 맥락이 섞이지 않도록 사용자가 직접 끊을 수 있게 함)
+  function handleClearHistory() {
+    setHistory([])
   }
 
   return (
@@ -205,6 +247,34 @@ export default function Page() {
             onRetry={handleRetry}
           />
         </main>
+
+        {/* Sprint 10: 세션 분석 히스토리 (새로고침 시 사라지는 순수 메모리, 저장하지 않음) */}
+        {history.length > 0 && (
+          <div className="rounded-lg border border-border/70 bg-card/50 p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground">
+                🕓 이번 세션 분석 히스토리 (최근 {HISTORY_LIMIT}건 · 새로고침 시 사라짐, 저장 안 함)
+              </p>
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                히스토리 지우기
+              </button>
+            </div>
+            <ol className="flex flex-wrap gap-2">
+              {history.map((entry, i) => (
+                <li
+                  key={i}
+                  className="rounded-full border border-border bg-background px-3 py-1 text-xs text-foreground/80"
+                >
+                  {i + 1}. {entry.attackType} · {entry.risk}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {/* 예외 처리(E-03, E-04, E-05) 검증용 테스트 액션 바 */}
         <div className="rounded-lg border border-border/70 bg-card/50 p-4 text-center">

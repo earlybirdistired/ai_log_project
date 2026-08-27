@@ -127,3 +127,30 @@
 - [x] **정상·공격 의심·위험 공격을 포함한 3개 이상의 테스트 케이스가 정상적으로 동작한다.** (6종 테스트 케이스 100% 통과)
 - [x] **각 테스트에서 로그 입력부터 결과 확인까지 1분 이내에 완료할 수 있다.** (평균 1.2~1.5초 내 완료)
 
+---
+
+## 🔁 3. 실제 Gemini API 연동 회귀 검증 (Sprint 6~11, 2026-08-27)
+
+위 결과는 Sprint 4 시점의 **규칙 기반 목업 엔진** 기준이다. Sprint 6~11에서 실제
+Gemini API(`gemini-3.5-flash-lite`, `GEMINI_MODEL` 환경변수로 교체 가능) 연동으로
+전환한 뒤, 동일한 6종 표준 로그를 실제 `/api/analyze` 엔드포인트에 그대로 재입력해
+회귀 검증했다.
+
+| ID | 기대 공격 유형 | 실제 attackType | 실제 risk | 실제 confidence | 실제 logFormat | 응답시간 | 결과 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: |
+| TC-01 | 정상 요청 | 정상 요청 | 낮음 | 높음 | Apache/Nginx 액세스 로그 | 1.9초 | 🟢 PASS |
+| TC-02 | Brute Force | Brute Force | 중간 | 높음 | Apache/Nginx 액세스 로그 | 1.5초 | 🟢 PASS |
+| TC-03 | SQL Injection | SQL Injection | 치명적 | 높음 | Apache/Nginx 액세스 로그 | 1.7초 | 🟢 PASS |
+| TC-04 | XSS | XSS | 높음 | 높음 | Apache/Nginx 액세스 로그 | 1.7초 | 🟢 PASS |
+| TC-05 | Path Traversal | Path Traversal | 높음 | 높음 | Apache/Nginx 액세스 로그 | 1.6초 | 🟢 PASS |
+| TC-06 | 판단 불가 | 판단 불가 | 판단 불가 | 낮음 | 알 수 없음 | 1.5초 | 🟢 PASS |
+
+**6/6 PASS**, 평균 응답시간 1.65초로 PRD 1분 기준을 크게 하회. 규칙 기반 엔진 대비
+`risk`가 더 세밀하게 판단됨(예: TC-03 SQL Injection이 "높음" 대신 실제 공격 문맥을
+반영해 "치명적"로 상향 판정), 이는 목업이 아닌 LLM이 로그 맥락을 실제로 추론한다는
+근거다.
+
+> ⚠️ **참고:** `gemini-3.6-flash`(원래 계획 모델)는 무료 등급 일일 할당량이 20건으로
+> 매우 낮아 이 회귀 검증은 별도 할당량 풀을 가진 `gemini-3.5-flash-lite`로 수행했다.
+> 프로덕션 전환 및 `gemini-3.6-flash` 재검증에는 유료 등급(Billing) 전환이 필요하다.
+

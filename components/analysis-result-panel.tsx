@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   ShieldQuestion,
   Loader2,
@@ -214,8 +215,42 @@ function ErrorState({
   )
 }
 
+// Sprint 11: 실시간 타이핑 효과.
+// Gemini 응답은 반드시 완전한 JSON으로 검증까지 끝난 뒤에만 화면에 반영해야
+// 하므로(스키마 검증 실패 시 E-05 처리), 원시 토큰 스트림을 그대로 흘려보내는
+// 방식 대신 "검증이 끝난 최종 설명 텍스트"를 클라이언트에서 타이핑하듯 점진적으로
+// 드러내는 방식을 택했다. 서버 안정성(Sprint 6~9에서 다진 타임아웃/재시도/스키마
+// 검증)을 건드리지 않으면서 체감 UX만 개선한다.
+function useTypewriter(text: string): string {
+  const [displayed, setDisplayed] = useState('')
+
+  useEffect(() => {
+    setDisplayed('')
+    if (!text) return
+
+    const TOTAL_DURATION_MS = 600
+    const STEP_MS = 16
+    const totalSteps = Math.max(1, Math.round(TOTAL_DURATION_MS / STEP_MS))
+    const charsPerStep = Math.max(1, Math.ceil(text.length / totalSteps))
+
+    let shown = 0
+    const id = setInterval(() => {
+      shown += charsPerStep
+      setDisplayed(text.slice(0, shown))
+      if (shown >= text.length) {
+        clearInterval(id)
+      }
+    }, STEP_MS)
+
+    return () => clearInterval(id)
+  }, [text])
+
+  return displayed
+}
+
 function SuccessState({ result }: { result: AnalysisResult }) {
   const AttackIcon = ATTACK_ICON[result.attackType]
+  const typedDescription = useTypewriter(result.description)
   return (
     <div className="flex flex-col gap-5 animate-in fade-in-50 duration-300">
       {/* 요약 헤더 */}
@@ -228,6 +263,14 @@ function SuccessState({ result }: { result: AnalysisResult }) {
           <p className="font-semibold text-foreground">분석 완료</p>
           <p className="text-sm text-muted-foreground">
             로그 {result.lineCount}줄 분석 · 처리 시간 {result.processingTime}
+            {result.logFormat && (
+              <>
+                {' · '}
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                  {result.logFormat}
+                </span>
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -240,20 +283,47 @@ function SuccessState({ result }: { result: AnalysisResult }) {
             <AttackIcon className="size-5 text-primary" aria-hidden="true" />
             {result.attackType}
           </p>
+          {result.secondaryAttackTypes && result.secondaryAttackTypes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">복합 패턴:</span>
+              {result.secondaryAttackTypes.map((type) => (
+                <span
+                  key={type}
+                  className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+                >
+                  {type}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
           <p className="text-xs font-medium text-muted-foreground">위험도</p>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <RiskBadge risk={result.risk} />
+            {result.confidence && (
+              <span
+                className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+                title="AI가 스스로 판단한 분석 확신도"
+              >
+                확신도 {result.confidence}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 분석 설명 */}
+      {/* 분석 설명 (타이핑 효과) */}
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
         <p className="text-sm font-semibold text-foreground">분석 설명</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {result.description}
+          {typedDescription}
+          {typedDescription.length < result.description.length && (
+            <span
+              className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-primary align-middle"
+              aria-hidden="true"
+            />
+          )}
         </p>
       </div>
 
