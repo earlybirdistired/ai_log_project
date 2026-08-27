@@ -38,6 +38,10 @@
 
 ```text
 ├── app/                  # Next.js App Router (페이지 및 레이아웃)
+│   ├── api/analyze/      # AI 분석 엔드포인트
+│   ├── globals.css       # 전역 테마 및 스타일링
+│   ├── layout.tsx        # 루트 레이아웃
+│   └── page.tsx          # 단일 페이지 메인 화면
 ├── components/           # UI 및 도메인 컴포넌트
 │   ├── app-header.tsx    # 상단 서비스 헤더
 │   ├── intro-section.tsx # 서비스 안내
@@ -46,9 +50,13 @@
 │   └── risk-badge.tsx    # 위험도 뱃지
 ├── docs/                 # 기획 및 개발 관리 문서
 │   ├── README.md         # 문서 허브
-│   ├── DEVELOPMENT_PLAN.md # 스프린트 단위 개발 계획서
-│   └── TEST_CASES.md     # 표준 테스트 케이스 명세서
-├── lib/                  # 분석 로직 및 유틸리티
+│   ├── DEVELOPMENT_PLAN.md # 스프린트 단위 개발 계획서 (Sprint 0~5 완료)
+│   ├── SPRINT_LOG.md     # 스프린트별 상세 수행 로그
+│   └── TEST_CASES.md     # 표준 테스트 케이스 및 PRD 체크리스트 전수 점검서
+├── lib/                  # 분석 로직, 테스트 데이터 및 유틸리티
+│   ├── analyze.ts        # 핵심 판별 로직 및 에러/상태 정의
+│   ├── test-samples.ts   # 표준 6종 테스트 케이스 및 자동 검증 모듈
+│   └── utils.ts          # 유틸리티 함수
 ├── public/               # 정적 애셋 (아이콘, 이미지)
 ├── PRD.md                # 제품 요구사항 정의서
 └── README.md             # 프로젝트 소개 (본 문서)
@@ -80,5 +88,7 @@ pnpm start
 ## 📖 관련 문서
 
 - [상세 제품 요구사항 정의서 (PRD.md)](./PRD.md)
+- [문서 허브 (docs/README.md)](./docs/README.md)
 - [스프린트 개발 계획서 (docs/DEVELOPMENT_PLAN.md)](./docs/DEVELOPMENT_PLAN.md)
+- [스프린트 진행 기록 로그 (docs/SPRINT_LOG.md)](./docs/SPRINT_LOG.md)
 - [테스트 케이스 명세서 (docs/TEST_CASES.md)](./docs/TEST_CASES.md)
